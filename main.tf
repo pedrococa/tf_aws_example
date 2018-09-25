@@ -1,16 +1,33 @@
-resource "aws_instance" "example" {
-  ami		= "ami-07a09008cc59ea2eb"
+# Data source. Fetched from the cloud provider (AWS)
+data "aws_availability_zones" "all" {}
+
+resource "aws_launch_configuration" "example" {
+  # Ubuntu 18.04 AMI
+  image_id      = "ami-07a09008cc59ea2eb"
   instance_type = "t2.micro"
-  vpc_security_group_ids = ["${aws_security_group.instance.id}"]
+  security_groups = ["${aws_security_group.instance.id}"]
 
   user_data = <<-EOF
 		#!/bin/bash
 		echo "Hola Manola" > index.html
 		nohup busybox httpd -f -p "${var.server_port}" &
 		EOF
+  lifecycle {
+    create_before_destroy = true
+  }
+}
 
-  tags {
-    Name = "pcoca-demo"
+resource "aws_autoscaling_group" "example" {
+  launch_configuration = "${aws_launch_configuration.example.id}"
+  availability_zones = ["${data.aws_availability_zones.all.names}"]
+
+  min_size = 2
+  max_size = 5
+
+  tag {
+    key			= "Name"
+    value		= "terraform-asg-example"
+    propagate_at_launch = true
   }
 }
 
@@ -23,6 +40,10 @@ resource "aws_security_group" "instance" {
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 variable "server_port" {
@@ -30,6 +51,3 @@ variable "server_port" {
   default = 8080
 }
 
-output "public_ip" {
-  value = "${aws_instance.example.public_ip}"
-}
