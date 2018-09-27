@@ -58,7 +58,7 @@ variable "server_port" {
 # Adding Load Balancers to the configuration
 resource "aws_elb" "example" {
   name		     = "terraform-asg-example"
-  availability_zones = ["{$data.aws_availability_zones.all.names}"]
+  availability_zones = ["${data.aws_availability_zones.all.names}"]
   security_groups = ["${aws_security_group.elb.id}"]
 
   listener {
